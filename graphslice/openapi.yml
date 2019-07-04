@@ -1,0 +1,76 @@
+openapi: 3.0.0
+info:
+  title: OpenAPI Introspection API
+  version: "1.0"
+paths:
+  /tags:
+    summary: Not implemented yet
+    get:
+      responses:
+        2XX:
+          description: List of tags used in the API
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                    description:
+                      type: string
+  /tags/{tagId}/operations:
+    summary: Not implemented yet
+    get:
+      parameters:
+        - name: tagId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        2XX:
+          description: List of operations associated to a tag
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+  /$openapi:
+    get:
+      parameters:
+      - name: tagIds
+        in: query
+        schema:
+          type: array
+          items:
+            type: string
+      - name: operationIds
+        in: query
+        schema:
+          type: array
+          items:
+            type: string
+      - name: format
+        in: query
+        schema:
+          type: string
+          enum:
+            - json
+            - yaml
+      - name: style
+        in: query
+        schema:
+          type: string
+          enum: 
+            - Plain        
+            - PowerPlatform
+            - Powershell
+      responses:
+        2XX:
+          description: List of operations associated to a tag
+          content:
+            "application/vnd.oai.openapi": {}
+            "application/vnd.oai.openapi+json": {}
