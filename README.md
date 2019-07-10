@@ -1,6 +1,6 @@
 # Microsoft Graph OpenAPI Service
 An API for querying the OpenAPI description of Microsoft Graph
-The Microsoft Graph OpenAPI Introspection API converts Microsoft Graph CSDL metadata to the respective OpenAPI description.
+The Microsoft Graph OpenAPI Service converts Microsoft Graph CSDL metadata to the respective OpenAPI description.
 
 ## Copyright and license
 
