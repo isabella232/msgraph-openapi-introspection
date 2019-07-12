@@ -10,9 +10,9 @@ namespace Microsoft.Graph.OpenAPIService
     /// </summary>
     internal class OperationIdPowershellFormatter : OpenApiVisitorBase
     {
-        public override void Visit(OpenApiPathItem pathItem)
+        public override void Visit(OpenApiOperation operation)
         {
-            var operationId = pathItem.Operations[OperationType.Get].OperationId; 
+            var operationId = operation.OperationId;                        
 
             int charPos = operationId.LastIndexOf('.', operationId.Length - 1);
             if (charPos >= 0)
@@ -20,7 +20,7 @@ namespace Microsoft.Graph.OpenAPIService
                 StringBuilder newOperationId = new StringBuilder(operationId);
 
                 newOperationId[charPos] = '_';
-                pathItem.Operations[OperationType.Get].OperationId = newOperationId.ToString();
+                operation.OperationId = newOperationId.ToString();
             }
         }
     }
