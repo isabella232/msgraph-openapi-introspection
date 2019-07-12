@@ -9,6 +9,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Text;
 
 namespace Microsoft.Graph.OpenAPIService
 {
@@ -100,8 +101,8 @@ namespace Microsoft.Graph.OpenAPIService
         public static Func<OpenApiOperation, bool> CreatePredicate(string operationIds, string tags)
         {
             if (operationIds != null && tags != null)
-            {
-                return null;
+            {                
+                return null; // Cannot filter by OperationIds and Tags at the same time
             }
 
             Func<OpenApiOperation, bool> predicate;
@@ -183,15 +184,28 @@ namespace Microsoft.Graph.OpenAPIService
 
         public static OpenApiDocument ApplyStyle(OpenApiStyle style, OpenApiDocument subsetOpenApiDocument)
         {
-            if (style == OpenApiStyle.PowerPlatform || style == OpenApiStyle.Powershell)
+            if (style == OpenApiStyle.Plain)
             {
-                // Clone doc before making changes
-                subsetOpenApiDocument = Clone(subsetOpenApiDocument);
-
-                var anyOfRemover = new AnyOfRemover();
-                var walker = new OpenApiWalker(anyOfRemover);
-                walker.Walk(subsetOpenApiDocument);
+                return subsetOpenApiDocument;
             }
+
+            /* For Powershell and PowerPlatform Styles */
+
+            // Clone doc before making changes
+            subsetOpenApiDocument = Clone(subsetOpenApiDocument);
+
+            var anyOfRemover = new AnyOfRemover();
+            var walker = new OpenApiWalker(anyOfRemover);
+            walker.Walk(subsetOpenApiDocument);
+                        
+            if (style == OpenApiStyle.Powershell)
+            {
+                // Format the OperationId for Powershell cmdlet names generation 
+                var operationIdFormatter = new OperationIdPowershellFormatter();
+                walker = new OpenApiWalker(operationIdFormatter);
+                walker.Walk(subsetOpenApiDocument);                
+            }
+                        
             return subsetOpenApiDocument;
         }
 
@@ -218,7 +232,7 @@ namespace Microsoft.Graph.OpenAPIService
                 throw new Exception("Failed to retrieve OpenApi document");
             }
 
-            var stream = response.Content.ReadAsStreamAsync().GetAwaiter().GetResult(); ;
+            var stream = response.Content.ReadAsStreamAsync().GetAwaiter().GetResult();
 
             var newrules = ValidationRuleSet.GetDefaultRuleSet().Rules
                 .Where(r => r.GetType() != typeof(ValidationRule<OpenApiSchema>)).ToList();
