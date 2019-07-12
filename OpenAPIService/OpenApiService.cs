@@ -189,7 +189,7 @@ namespace Microsoft.Graph.OpenAPIService
                 return subsetOpenApiDocument;
             }
 
-            // For Powershell and PowerPlatform styles
+            /* For Powershell and PowerPlatform Styles */
 
             // Clone doc before making changes
             subsetOpenApiDocument = Clone(subsetOpenApiDocument);
@@ -197,22 +197,13 @@ namespace Microsoft.Graph.OpenAPIService
             var anyOfRemover = new AnyOfRemover();
             var walker = new OpenApiWalker(anyOfRemover);
             walker.Walk(subsetOpenApiDocument);
-
-            // Format OperationId for Powershell cmdlet names generation by separating the method group from operation name with an underscore(_) 
+                        
             if (style == OpenApiStyle.Powershell)
-            {                                                         
-                var key = subsetOpenApiDocument.Paths.Keys.First();
-                var operationId = subsetOpenApiDocument.Paths[key].Operations[OperationType.Get].OperationId;
-
-                // The last '.' character of the OperationId value separates the method group from the operation name
-                int charPos = operationId.LastIndexOf('.', operationId.Length - 1);
-                if (charPos >= 0 )
-                {
-                    StringBuilder newOperationId = new StringBuilder(operationId);
-
-                    newOperationId[charPos] = '_';
-                    subsetOpenApiDocument.Paths[key].Operations[OperationType.Get].OperationId = newOperationId.ToString();
-                }
+            {
+                // Format the OperationId for Powershell cmdlet names generation 
+                var operationIdFormatter = new OperationIdPowershellFormatter();
+                walker = new OpenApiWalker(operationIdFormatter);
+                walker.Walk(subsetOpenApiDocument);                
             }
                         
             return subsetOpenApiDocument;
