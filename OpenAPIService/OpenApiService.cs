@@ -101,8 +101,8 @@ namespace Microsoft.Graph.OpenAPIService
         public static Func<OpenApiOperation, bool> CreatePredicate(string operationIds, string tags)
         {
             if (operationIds != null && tags != null)
-            {
-                return null;
+            {                
+                return null; // Cannot filter by OperationIds and Tags at the same time
             }
 
             Func<OpenApiOperation, bool> predicate;
