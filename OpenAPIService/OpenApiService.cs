@@ -22,8 +22,8 @@ namespace Microsoft.Graph.OpenAPIService
 
     public class OpenApiService
     {
-        const string graphV1OpenApiUrl = "https://github.com/microsoftgraph/microsoft-graph-openapi/blob/master/v1.0.json?raw=true";
-        const string graphBetaOpenApiUrl = "https://github.com/microsoftgraph/microsoft-graph-openapi/blob/master/beta.json?raw=true";
+        const string graphV1OpenApiUrl = "https://raw.githubusercontent.com/microsoftgraph/msgraph-metadata/master/openapi/v1.0/openapi.yaml";
+        const string graphBetaOpenApiUrl = "https://raw.githubusercontent.com/microsoftgraph/msgraph-metadata/master/openapi/beta/openapi.yaml";
         static OpenApiDocument _OpenApiV1Document;
         static OpenApiDocument _OpenApiBetaDocument;
 
