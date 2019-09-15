@@ -1,6 +1,6 @@
 openapi: 3.0.0
 info:
-  title: OpenAPI Introspection API
+  title: OpenAPI Service
   version: "0.1.0"
 servers:
   - url: https://graph.microsoft.com/{version}/api-docs/
@@ -69,7 +69,7 @@ paths:
           enum: 
             - Plain        
             - PowerPlatform
-            - Powershell
+            - PowerShell
       responses:
         2XX:
           description: List of operations associated to a tag

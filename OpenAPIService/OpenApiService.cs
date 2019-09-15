@@ -15,7 +15,7 @@ namespace Microsoft.Graph.OpenAPIService
 {
     public enum OpenApiStyle
     {
-        Powershell,
+        PowerShell,
         PowerPlatform,
         Plain
     }
@@ -121,7 +121,14 @@ namespace Microsoft.Graph.OpenAPIService
             else if (tags != null)
             {
                 var tagsArray = tags.Split(',');
-                predicate = (o) => o.Tags.Any(t => tagsArray.Contains(t.Name));
+                if (tagsArray.Length == 1 && tagsArray[0].EndsWith("*"))
+                {
+                    var pattern = tagsArray[0].Substring(0, tagsArray[0].Length-1);
+                    predicate = (o) => o.Tags.Any(t => t.Name.StartsWith(pattern));
+                } else
+                {
+                    predicate = (o) => o.Tags.Any(t => tagsArray.Contains(t.Name));
+                }
             }
             else
             {
@@ -198,7 +205,7 @@ namespace Microsoft.Graph.OpenAPIService
             var walker = new OpenApiWalker(anyOfRemover);
             walker.Walk(subsetOpenApiDocument);
                         
-            if (style == OpenApiStyle.Powershell)
+            if (style == OpenApiStyle.PowerShell)
             {
                 // Format the OperationId for Powershell cmdlet names generation 
                 var operationIdFormatter = new OperationIdPowershellFormatter();
