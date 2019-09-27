@@ -10,6 +10,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace Microsoft.Graph.OpenAPIService
 {
@@ -121,10 +122,11 @@ namespace Microsoft.Graph.OpenAPIService
             else if (tags != null)
             {
                 var tagsArray = tags.Split(',');
-                if (tagsArray.Length == 1 && tagsArray[0].EndsWith("*"))
+                if (tagsArray.Length == 1)
                 {
-                    var pattern = tagsArray[0].Substring(0, tagsArray[0].Length-1);
-                    predicate = (o) => o.Tags.Any(t => t.Name.StartsWith(pattern));
+                    var regex = new Regex(tagsArray[0]);
+                    
+                    predicate = (o) => o.Tags.Any(t => regex.IsMatch(t.Name));
                 } else
                 {
                     predicate = (o) => o.Tags.Any(t => tagsArray.Contains(t.Name));
