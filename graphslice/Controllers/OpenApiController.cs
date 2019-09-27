@@ -17,6 +17,8 @@ namespace apislice.Controllers
     /// </summary>
     public class OpenApiController : ControllerBase
     {
+        [Route("openapi")]
+        [Route("{version}/openapi")]
         [Route("$openapi")]
         [Route("{version}/$openapi")]
         [HttpGet]
