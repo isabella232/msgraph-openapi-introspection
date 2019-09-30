@@ -45,7 +45,7 @@ namespace apislice.Controllers
             {
                 
                 var target = $"{baseUrl}/openapi?tags={item.Key.Name}&openApiVersion=3";
-                sw.WriteLine($"<li><a href='./openapi?tags={target}'>{item.Key.Name}</a>   [<a href='/swagger/index.html#{target}'>Swagger UI</a>]</li>");
+                sw.WriteLine($"<li><a href='./openapi?tags={target}'>{item.Key.Name}</a>   [<a href='/swagger/index.html#url={target}'>Swagger UI</a>]</li>");
                 sw.WriteLine("<ul>");
                 foreach (var op in item.Value)
                 {

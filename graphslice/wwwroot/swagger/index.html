@@ -38,9 +38,14 @@
     <script>
 	window.onload = function () {
 		var docUrl = window.location.hash.substr(1);
+		if (docUrl.startsWith("url=")) {
+			docUrl = docUrl.substr(4);
+		} else {
+			docUrl = "/";
+		}
       // Begin Swagger UI call region
       const ui = SwaggerUIBundle({
-        url: docUrl || '/',
+        url: docUrl,
         dom_id: '#swagger-ui',
         deepLinking: true,
         presets: [

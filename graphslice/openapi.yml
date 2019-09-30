@@ -3,7 +3,8 @@ info:
   title: OpenAPI Service
   version: "0.1.0"
 servers:
-  - url: https://graph.microsoft.com/{version}/api-docs/
+  - url: https://graphslice.azurewebsites.net/
+  - url: https://localhost:5001/
 paths:
   /tags:
     summary: Not implemented yet
@@ -43,7 +44,7 @@ paths:
   /openapi:
     get:
       parameters:
-      - name: tagIds
+      - name: tags
         in: query
         schema:
           type: array
@@ -70,6 +71,10 @@ paths:
             - Plain        
             - PowerPlatform
             - PowerShell
+      - name: graphVersion
+        in: query
+        schema:
+          type: string        
       responses:
         2XX:
           description: List of operations associated to a tag
