@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Net.Http.Headers;
 using System.Text;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Graph.OpenAPIService;
 using Microsoft.OpenApi.Models;
@@ -16,32 +17,9 @@ namespace apislice.Controllers
     public class IndexController : ControllerBase
     {
         [HttpGet]
-        public IActionResult Get()
+        public async Task<IActionResult> Get(string graphVersion = "v1.0", bool forceRefresh = false)
         {
-            var graphOpenApi = OpenApiService.GetGraphOpenApiV1();
-            WriteIndex(graphOpenApi, Response.Body);
-
-            return new EmptyResult();
-        }
-
-
-        [Route("v1.0")]
-        [HttpGet]
-        public IActionResult Getv10()
-        {
-            var graphOpenApi = OpenApiService.GetGraphOpenApiV1();
-
-            Response.Headers["Content-Type"] = "text/html";
-            WriteIndex(graphOpenApi, Response.Body);
-
-            return new EmptyResult();
-        }
-
-        [Route("beta")]
-        [HttpGet]
-        public IActionResult GetBeta()
-        {
-            var graphOpenApi = OpenApiService.GetGraphOpenApiBeta();
+            var graphOpenApi = await OpenApiService.GetGraphOpenApiDocument(graphVersion,forceRefresh);
             WriteIndex(graphOpenApi, Response.Body);
 
             return new EmptyResult();

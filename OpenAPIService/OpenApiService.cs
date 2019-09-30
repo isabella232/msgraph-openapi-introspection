@@ -1,4 +1,6 @@
-﻿using Microsoft.OpenApi.Models;
+﻿using Microsoft.OData.Edm.Csdl;
+using Microsoft.OData.Edm;
+using Microsoft.OpenApi.Models;
 using Microsoft.OpenApi.Readers;
 using Microsoft.OpenApi.Services;
 using Microsoft.OpenApi.Validations;
@@ -11,6 +13,11 @@ using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Xml.Linq;
+using System.Threading.Tasks;
+using Microsoft.OpenApi.OData;
+using Microsoft.OpenApi.Interfaces;
+using System.Collections.Concurrent;
 
 namespace Microsoft.Graph.OpenAPIService
 {
@@ -23,30 +30,20 @@ namespace Microsoft.Graph.OpenAPIService
 
     public class OpenApiService
     {
-        const string graphV1OpenApiUrl = "https://raw.githubusercontent.com/microsoftgraph/msgraph-metadata/master/openapi/v1.0/openapi.yaml";
-        const string graphBetaOpenApiUrl = "https://raw.githubusercontent.com/microsoftgraph/msgraph-metadata/master/openapi/beta/openapi.yaml";
-        static OpenApiDocument _OpenApiV1Document;
-        static OpenApiDocument _OpenApiBetaDocument;
+        static ConcurrentDictionary<Uri, OpenApiDocument> _OpenApiDocuments = new ConcurrentDictionary<Uri, OpenApiDocument>();
 
-        public static OpenApiDocument CreateFilteredDocument(string title, string version, Func<OpenApiOperation, bool> predicate)
+        /// <summary>
+        /// Create partial document based on provided predicate
+        /// </summary>
+        public static OpenApiDocument CreateFilteredDocument(OpenApiDocument source, string title, string graphVersion, Func<OpenApiOperation, bool> predicate)
         {
-            OpenApiDocument source = null;
-            switch (version)
-            {
-                case "v1.0":
-                    source = OpenApiService.GetGraphOpenApiV1();
-                    break;
-                case "beta":
-                    source = OpenApiService.GetGraphOpenApiBeta();
-                    break;
-            }
 
             var subset = new OpenApiDocument
             {
                 Info = new OpenApiInfo()
                 {
                     Title = title,
-                    Version = version
+                    Version = graphVersion
                 },
 
                 Components = new OpenApiComponents()
@@ -69,7 +66,7 @@ namespace Microsoft.Graph.OpenAPIService
 
             subset.SecurityRequirements.Add(new OpenApiSecurityRequirement() { { aadv2Scheme, new string[] { } } });
             
-            subset.Servers.Add(new OpenApiServer() { Description = "Core", Url = "https://graph.microsoft.com/v1.0/" });
+            subset.Servers.Add(new OpenApiServer() { Description = "Core", Url = source.Servers.First().Url });
 
             var operationObjects = new List<OpenApiOperation>();
             var results = FindOperations(source, predicate);
@@ -99,6 +96,12 @@ namespace Microsoft.Graph.OpenAPIService
             return subset;
         }
 
+        /// <summary>
+        /// Create predicate function based on passed query parameters
+        /// </summary>
+        /// <param name="operationIds">comma delimited list of operationIds or * for all operations</param>
+        /// <param name="tags">comma delimited list of tags or a single regex</param>
+        /// <returns></returns>
         public static Func<OpenApiOperation, bool> CreatePredicate(string operationIds, string tags)
         {
             if (operationIds != null && tags != null)
@@ -140,6 +143,13 @@ namespace Microsoft.Graph.OpenAPIService
             return predicate;
         }
 
+        /// <summary>
+        /// Create a representation of the OpenApiDocument to return from an API
+        /// </summary>
+        /// <param name="subset">OpenAPI document</param>
+        /// <param name="openApiVersion"></param>
+        /// <param name="format"></param>
+        /// <returns></returns>
         public static MemoryStream SerializeOpenApiDocument(OpenApiDocument subset, string openApiVersion, string format)
         {
             var stream = new MemoryStream();
@@ -167,30 +177,31 @@ namespace Microsoft.Graph.OpenAPIService
             return stream;
         }
 
-        public static OpenApiDocument GetGraphOpenApiV1()
+        /// <summary>
+        /// Get OpenApiDocument version of Microsoft Graph based on CSDL document 
+        /// </summary>
+        /// <param name="graphVersion">Version of Microsoft Graph</param>
+        /// <param name="forceRefresh">Don't read from in-memory cache</param>
+        /// <returns>Instance of an OpenApiDocument</returns>
+        public static async Task<OpenApiDocument> GetGraphOpenApiDocument(string graphVersion, bool forceRefresh)
         {
-            if (_OpenApiV1Document != null)
+            var csdlHref = new Uri($"https://graph.microsoft.com/{graphVersion}/$metadata");
+            if (!forceRefresh && _OpenApiDocuments.TryGetValue(csdlHref, out OpenApiDocument doc))
             {
-                return _OpenApiV1Document;
+                return doc;
             }
 
-            _OpenApiV1Document = GetOpenApiDocument(graphV1OpenApiUrl);
-
-            return _OpenApiV1Document;
+            OpenApiDocument source = await CreateOpenApiDocument(csdlHref, forceRefresh);
+            _OpenApiDocuments[csdlHref] = source;
+            return source;
         }
 
-        public static OpenApiDocument GetGraphOpenApiBeta()
-        {
-            if (_OpenApiBetaDocument != null)
-            {
-                return _OpenApiBetaDocument;
-            }
-
-            _OpenApiBetaDocument = GetOpenApiDocument(graphBetaOpenApiUrl);
-
-            return _OpenApiBetaDocument;
-        }
-
+        /// <summary>
+        /// Update the OpenAPI document based on the style option
+        /// </summary>
+        /// <param name="style"></param>
+        /// <param name="subsetOpenApiDocument"></param>
+        /// <returns></returns>
         public static OpenApiDocument ApplyStyle(OpenApiStyle style, OpenApiDocument subsetOpenApiDocument)
         {
             if (style == OpenApiStyle.Plain)
@@ -229,34 +240,33 @@ namespace Microsoft.Graph.OpenAPIService
             return reader.Read(stream, out OpenApiDiagnostic diag);
         }
 
-        private static OpenApiDocument GetOpenApiDocument(string url)
+        private static async Task<OpenApiDocument> CreateOpenApiDocument(Uri csdlHref, bool forceRefresh = false)
         {
-            HttpClient httpClient = CreateHttpClient();
+            var httpClient = CreateHttpClient();
 
-            var response = httpClient.GetAsync(url)
-                                .GetAwaiter().GetResult();
+            Stream csdl = await httpClient.GetStreamAsync(csdlHref.OriginalString);
+            var edmModel = CsdlReader.Parse(XElement.Load(csdl).CreateReader());
 
-            if (!response.IsSuccessStatusCode)
-            {
-                throw new Exception("Failed to retrieve OpenApi document");
-            }
+            var settings = new OpenApiConvertSettings() {
+                 EnableKeyAsSegment = true,
+                 EnableOperationId = true,
+                 PrefixEntityTypeNameBeforeKey =true
+            };
+            OpenApiDocument document = edmModel.ConvertToOpenApi(settings);
 
-            var stream = response.Content.ReadAsStreamAsync().GetAwaiter().GetResult();
+            document = FixReferences(document);
 
-            var newrules = ValidationRuleSet.GetDefaultRuleSet().Rules
-                .Where(r => r.GetType() != typeof(ValidationRule<OpenApiSchema>)).ToList();
-            
-
-            var reader = new OpenApiStreamReader(new OpenApiReaderSettings() {
-                RuleSet = new ValidationRuleSet(newrules)
-            });
-            var openApiDoc = reader.Read(stream, out var diagnostic);
-
-            if (diagnostic.Errors.Count > 0)
-            {
-                throw new Exception("OpenApi document has errors : " + String.Join("\n", diagnostic.Errors));
-            }
-            return openApiDoc;
+            return document;
+        }
+        
+        private static OpenApiDocument FixReferences(OpenApiDocument document)
+        {
+            // This method is only needed because the output of ConvertToOpenApi isn't quite a valid OpenApiDocument instance.
+            // So we write it out, and read it back in again to fix it up.
+            var sb = new StringBuilder();
+            document.SerializeAsV3(new OpenApiYamlWriter(new StringWriter(sb)));
+            var doc = new OpenApiStringReader().Read(sb.ToString(), out var diag);
+            return doc;
         }
 
         private static IList<SearchResult> FindOperations(OpenApiDocument graphOpenApi, Func<OpenApiOperation, bool> predicate)
@@ -275,7 +285,7 @@ namespace Microsoft.Graph.OpenAPIService
                 AutomaticDecompression = DecompressionMethods.GZip
             });
             httpClient.DefaultRequestHeaders.AcceptEncoding.Add(new System.Net.Http.Headers.StringWithQualityHeaderValue("gzip"));
-            httpClient.DefaultRequestHeaders.UserAgent.Add(new System.Net.Http.Headers.ProductInfoHeaderValue("apislice", "1.0"));
+            httpClient.DefaultRequestHeaders.UserAgent.Add(new System.Net.Http.Headers.ProductInfoHeaderValue("graphslice", "1.0"));
             return httpClient;
         }
 

@@ -18,20 +18,18 @@ namespace apislice.Controllers
     public class OpenApiController : ControllerBase
     {
         [Route("openapi")]
-        [Route("{version}/openapi")]
         [Route("$openapi")]
-        [Route("{version}/$openapi")]
         [HttpGet]
-        public IActionResult Get(string version = "v1.0",
+        public async Task<IActionResult> Get(
                                     [FromQuery]string operationIds = null,
                                     [FromQuery]string tags = null,
                                     [FromQuery]string openApiVersion = "2",
                                     [FromQuery]string title = "Partial Graph API",
                                     [FromQuery]OpenApiStyle style = OpenApiStyle.Plain,
-                                    [FromQuery]string format = "yaml")
+                                    [FromQuery]string format = "yaml",
+                                    [FromQuery]string graphVersion = "v1.0",
+                                    [FromQuery]bool forceRefresh = false)
         {
-            if (version != "v1.0" && version !="beta") return new NotFoundResult();
-
             var predicate = OpenApiService.CreatePredicate(operationIds, tags);
 
             if (predicate == null)
@@ -39,7 +37,9 @@ namespace apislice.Controllers
                 return new BadRequestResult();
             }
 
-            var subsetOpenApiDocument = OpenApiService.CreateFilteredDocument(title, version, predicate);
+            OpenApiDocument source = await OpenApiService.GetGraphOpenApiDocument(graphVersion, forceRefresh);
+
+            var subsetOpenApiDocument = OpenApiService.CreateFilteredDocument(source, title, graphVersion, predicate);
 
             subsetOpenApiDocument = OpenApiService.ApplyStyle(style, subsetOpenApiDocument);
 
