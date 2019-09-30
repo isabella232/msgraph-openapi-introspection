@@ -66,7 +66,7 @@ namespace Microsoft.Graph.OpenAPIService
 
             subset.SecurityRequirements.Add(new OpenApiSecurityRequirement() { { aadv2Scheme, new string[] { } } });
             
-            subset.Servers.Add(new OpenApiServer() { Description = "Core", Url = source.Servers.First().Url });
+            subset.Servers.Add(new OpenApiServer() { Description = "Core", Url = $"https://graph.microsoft.com/{graphVersion}" });
 
             var operationObjects = new List<OpenApiOperation>();
             var results = FindOperations(source, predicate);
@@ -250,7 +250,9 @@ namespace Microsoft.Graph.OpenAPIService
             var settings = new OpenApiConvertSettings() {
                  EnableKeyAsSegment = true,
                  EnableOperationId = true,
-                 PrefixEntityTypeNameBeforeKey =true
+                 PrefixEntityTypeNameBeforeKey =true,
+                 TagDepth = 2
+                  
             };
             OpenApiDocument document = edmModel.ConvertToOpenApi(settings);
 

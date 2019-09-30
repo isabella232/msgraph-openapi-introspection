@@ -6,6 +6,7 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.Graph.OpenAPIService;
 using Microsoft.OpenApi.Models;
 using Microsoft.OpenApi.Services;
@@ -20,13 +21,13 @@ namespace apislice.Controllers
         public async Task<IActionResult> Get(string graphVersion = "v1.0", bool forceRefresh = false)
         {
             var graphOpenApi = await OpenApiService.GetGraphOpenApiDocument(graphVersion,forceRefresh);
-            WriteIndex(graphOpenApi, Response.Body);
-
+            WriteIndex(this.Request.Scheme + "://"+ this.Request.Host.Value,graphOpenApi, Response.Body);
+            
             return new EmptyResult();
         }
 
 
-        private static void WriteIndex(OpenApiDocument graphOpenApi, Stream stream)
+        private static void WriteIndex(string baseUrl, OpenApiDocument graphOpenApi, Stream stream)
         {
             var sw = new StreamWriter(stream);
             
@@ -42,11 +43,13 @@ namespace apislice.Controllers
             sw.WriteLine("<ul>");
             foreach (var item in indexSearch.Index)
             {
-                sw.WriteLine("<li><a href='./$openapi?tags=" + item.Key.Name+"'>" + item.Key.Name+"</a></li>");
+                
+                var target = $"{baseUrl}/openapi?tags={item.Key.Name}&openApiVersion=3";
+                sw.WriteLine($"<li><a href='./openapi?tags={target}'>{item.Key.Name}</a>   [<a href='/swagger/index.html#{target}'>Swagger UI</a>]</li>");
                 sw.WriteLine("<ul>");
                 foreach (var op in item.Value)
                 {
-                    sw.WriteLine("<li><a href='./$openapi?operationIds=" + op.OperationId + "'>" + op.OperationId + "</a></li>");
+                    sw.WriteLine("<li><a href='./openapi?operationIds=" + op.OperationId + "'>" + op.OperationId + "</a></li>");
                 }
                 sw.WriteLine("</ul>");
             }
