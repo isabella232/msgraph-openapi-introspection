@@ -4,7 +4,9 @@ using System.IO;
 using System.Linq;
 using System.Net.Http.Headers;
 using System.Text;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.Graph.OpenAPIService;
 using Microsoft.OpenApi.Models;
 using Microsoft.OpenApi.Services;
@@ -16,39 +18,16 @@ namespace apislice.Controllers
     public class IndexController : ControllerBase
     {
         [HttpGet]
-        public IActionResult Get()
+        public async Task<IActionResult> Get(string graphVersion = "v1.0", bool forceRefresh = false)
         {
-            var graphOpenApi = OpenApiService.GetGraphOpenApiV1();
-            WriteIndex(graphOpenApi, Response.Body);
-
+            var graphOpenApi = await OpenApiService.GetGraphOpenApiDocument(graphVersion,forceRefresh);
+            WriteIndex(this.Request.Scheme + "://"+ this.Request.Host.Value, graphVersion, graphOpenApi, Response.Body);
+            
             return new EmptyResult();
         }
 
 
-        [Route("v1.0")]
-        [HttpGet]
-        public IActionResult Getv10()
-        {
-            var graphOpenApi = OpenApiService.GetGraphOpenApiV1();
-
-            Response.Headers["Content-Type"] = "text/html";
-            WriteIndex(graphOpenApi, Response.Body);
-
-            return new EmptyResult();
-        }
-
-        [Route("beta")]
-        [HttpGet]
-        public IActionResult GetBeta()
-        {
-            var graphOpenApi = OpenApiService.GetGraphOpenApiBeta();
-            WriteIndex(graphOpenApi, Response.Body);
-
-            return new EmptyResult();
-        }
-
-
-        private static void WriteIndex(OpenApiDocument graphOpenApi, Stream stream)
+        private static void WriteIndex(string baseUrl, string graphVersion, OpenApiDocument graphOpenApi, Stream stream)
         {
             var sw = new StreamWriter(stream);
             
@@ -59,16 +38,21 @@ namespace apislice.Controllers
 
             sw.AutoFlush = true;
 
+            sw.WriteLine("<head>");
+            sw.WriteLine("<link rel='stylesheet' href='./stylesheet.css' />");
+            sw.WriteLine("</head>");
             sw.WriteLine("<h1># OpenAPI Operations for Microsoft Graph</h1>");
             sw.WriteLine("<b/>");
             sw.WriteLine("<ul>");
             foreach (var item in indexSearch.Index)
             {
-                sw.WriteLine("<li><a href='./$openapi?tags=" + item.Key.Name+"'>" + item.Key.Name+"</a></li>");
+                
+                var target = $"{baseUrl}/openapi?tags={item.Key.Name}&openApiVersion=3&graphVersion={graphVersion}";
+                sw.WriteLine($"<li>{item.Key.Name} [<a href='./openapi?tags={target}'>OpenApi</a>]   [<a href='/swagger/index.html#url={target}'>Swagger UI</a>]</li>");
                 sw.WriteLine("<ul>");
                 foreach (var op in item.Value)
                 {
-                    sw.WriteLine("<li><a href='./$openapi?operationIds=" + op.OperationId + "'>" + op.OperationId + "</a></li>");
+                    sw.WriteLine($"<li>{op.OperationId}  [<a href='./openapi?operationIds={op.OperationId}'>OpenAPI</a>]</li>");
                 }
                 sw.WriteLine("</ul>");
             }

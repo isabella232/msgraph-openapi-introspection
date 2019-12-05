@@ -15,7 +15,7 @@ namespace apislice.Controllers
         public IActionResult Get()
         {
             Stream openAPIStream = typeof(Startup).Assembly.GetManifestResourceStream(typeof(Startup),"openapi.yml");
-            return new FileStreamResult(openAPIStream,"application/vnd.oai.openapi");
+            return new FileStreamResult(openAPIStream,"text/plain");
         }
     }
 }
